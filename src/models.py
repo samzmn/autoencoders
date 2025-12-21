@@ -105,7 +105,7 @@ class SparseStackedAutoencoder(tf.keras.Model):
             keras.layers.Input(shape=input_shape),
             keras.layers.Flatten(),
             keras.layers.Dense(100, activation="relu", kernel_initializer="he_normal"),
-            keras.layers.Dense(latent_dim, activation="sigmoid")
+            keras.layers.Dense(latent_dim, activation="sigmoid", activity_regularizer=self.kld_regularizer)
         ])
         self.decoder = keras.Sequential([
             keras.layers.Input(shape=(latent_dim,)),
@@ -246,6 +246,27 @@ class DenoiseConvolutionalAutoencoder(tf.keras.Model):
         decoded = self.decoder(encoded)
         return decoded
 
+class SparseConvolutionalAutoencoder(tf.keras.Model):
+    def __init__(self, input_shape=(28, 28), latent_dim=30, sparsity_loss_weight=05e-3, sparsity_target=0.1, **kwargs):
+        super().__init__(**kwargs)
+        self.kld_regularizer = KLDivergenceRegularizer(weight=sparsity_loss_weight, target=sparsity_target)
+        self.encoder = keras.Sequential([
+            keras.layers.Input(shape=input_shape),
+            keras.layers.Flatten(),
+            keras.layers.Dense(100, activation="relu", kernel_initializer="he_normal"),
+            keras.layers.Dense(latent_dim, activation="sigmoid")
+        ])
+        self.decoder = keras.Sequential([
+            keras.layers.Input(shape=(latent_dim,)),
+            keras.layers.Dense(100, activation="relu", kernel_initializer="he_normal"),
+            keras.layers.Dense(28 * 28, activation="sigmoid"),
+            keras.layers.Reshape(input_shape)
+        ])
 
+    def call(self, x):
+        z = self.encoder(x)
+        return self.decoder(z)
+    
+    
 def main():
     pass
