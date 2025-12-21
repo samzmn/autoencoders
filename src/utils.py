@@ -1,4 +1,14 @@
 import tensorflow as tf
+import keras._tf_keras.keras as keras
+
+def get_default_callbacks(model_name: str, ckpt_path: str="./ckpt", tensorboard_path: str="./runs", csv_log_dir: str=".logs") -> list:
+    return [
+        keras.callbacks.EarlyStopping(monitor="val_loss", min_delta=0, patience=5, restore_best_weights=True),
+        keras.callbacks.ModelCheckpoint(filepath=f'{ckpt_path}/{model_name}/checkpoint.weights.h5', monitor="val_loss", save_best_only=True, save_weights_only=True),
+        keras.callbacks.TensorBoard(log_dir=f'{tensorboard_path}/{model_name}_fashion_mnist', histogram_freq=5, write_steps_per_second=True),
+        keras.callbacks.CSVLogger(filename=f'{csv_log_dir}/{model_name}.csv', append=False),
+        keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.1, patience=3, min_delta=1e-4, cooldown=2, min_lr=1e-6),
+    ]
 
 class KLDivergenceRegularizer(tf.keras.regularizers.Regularizer):
     def __init__(self, weight, target):

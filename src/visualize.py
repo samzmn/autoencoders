@@ -48,6 +48,12 @@ def visualize_tied_stacked_ae():
     plot_reconstructions(model, X_test)
     save_fig("tied_stacked_autoencoder_reconstruction_plot")
 
+def visualize_sparce_stacked_ae(base_path="."):
+    (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
+    model = keras.models.load_model(f"{base_path}/saved_models/sparse_stacked_autoencoder.keras", custom_objects={"SparseStackedAutoencoder": models.SparseStackedAutoencoder})
+    plot_reconstructions(model, X_test)
+    save_fig("tied_stacked_autoencoder_reconstruction_plot")
+
 def visulize_conv_ae():
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
     model = keras.models.load_model("./saved_models/convolutional_autoencoder.keras", custom_objects={"ConvolutionalAutoencoder": models.ConvolutionalAutoencoder})
