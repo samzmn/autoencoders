@@ -1,6 +1,10 @@
 import tensorflow as tf
 import keras._tf_keras.keras as keras
 
+from utils import DenseTranspose, Conv2DTransposeTied, KLDivergenceRegularizer
+#--------------------------------------------------------------------------------
+# --------------- Stacked Autoencoders -----------------------------------------
+#--------------------------------------------------------------------------------
 class StackedAutoencoder(keras.models.Model):
     def __init__(self, input_shape=[28, 28], latent_dim=30, **kwargs):
         super(StackedAutoencoder, self).__init__(**kwargs)
@@ -35,35 +39,8 @@ class StackedAutoencoder(keras.models.Model):
     @classmethod
     def from_config(cls, config):
         return cls(**config)
-
-class DenseTranspose(tf.keras.layers.Layer):
-    def __init__(self, dense, activation=None, **kwargs):
-        super().__init__(**kwargs)
-        self.dense = dense
-        self.activation = tf.keras.activations.get(activation)
-
-    def build(self, input_shape):
-        if not self.dense.built:
-            raise ValueError(
-                "The tied Dense layer must be built before DenseTranspose."
-            )
-
-        self.bias = self.add_weight(
-            name="bias",
-            shape=(self.dense.kernel.shape[0],),
-            initializer="zeros",
-            trainable=True,
-        )
-        super().build(input_shape)
-
-    def call(self, inputs):
-        z = tf.matmul(inputs, self.dense.kernel, transpose_b=True)
-        if self.activation is not None:
-            z = self.activation(z + self.bias)
-        else:
-            z = z + self.bias
-        return z
     
+
 class TiedStackedAutoencoder(tf.keras.Model):
     def __init__(self, input_shape=(28, 28), latent_dim=30, **kwargs):
         super().__init__(**kwargs)
@@ -98,6 +75,36 @@ class TiedStackedAutoencoder(tf.keras.Model):
         z = self.encoder(x)
         return self.decoder(z)
 
+
+class DenoiseStackedAutoencoder(tf.keras.Model):
+    def __init__(self, input_shape=(28, 28), latent_dim=30, **kwargs):
+        super().__init__(**kwargs)
+        self.encoder = tf.keras.Sequential([
+            tf.keras.layers.Input(shape=input_shape),
+            tf.keras.layers.Flatten(),
+            tf.keras.layers.Dropout(0.5),
+            tf.keras.layers.Dense(100, activation="relu", kernel_initializer="he_normal"),
+            tf.keras.layers.Dense(30, activation="relu", kernel_initializer="he_normal")
+        ])
+        self.decoder = tf.keras.Sequential([
+            tf.keras.layers.Input(shape=(latent_dim,)),
+            tf.keras.layers.Dense(100, activation="relu", kernel_initializer="he_normal"),
+            tf.keras.layers.Dense(28 * 28, activation="sigmoid"),
+            tf.keras.layers.Reshape(input_shape)
+        ])
+
+    def call(self, x):
+        z = self.encoder(x)
+        return self.decoder(z)
+    
+class SparseStackedAutoencoder(keras.models.Model):
+    def __init__(self, input_shape=(28, 28), latent_dim=30, **kwargs):
+        super().__init__(**kwargs)
+        self.encoder
+
+#--------------------------------------------------------------------------------
+# --------------- Recurrent Autoencoders ---------------------------------------
+#--------------------------------------------------------------------------------
 class RecurrentAutoencoder(tf.keras.Model):
     def __init__(self, input_shape=(28, 28), latent_dim=30, **kwargs):
         super().__init__(**kwargs)
@@ -115,6 +122,10 @@ class RecurrentAutoencoder(tf.keras.Model):
         z = self.encoder(x)
         return self.decoder(z)
     
+#--------------------------------------------------------------------------------
+# --------------- Convolutional Autoencoders -----------------------------------
+#--------------------------------------------------------------------------------
+
 class ConvolutionalAutoencoder(tf.keras.Model):
     def __init__(self, input_shape=(28, 28), latent_dim=30, **kwargs):
         super().__init__(**kwargs)
@@ -143,27 +154,82 @@ class ConvolutionalAutoencoder(tf.keras.Model):
     def call(self, x):
         z = self.encoder(x)
         return self.decoder(z)
-    
+
+
+class TiedConvolutionalAutoencoder(tf.keras.Model):
+    def __init__(self, latent_channels=16):
+        super().__init__()
+
+        # -------- Encoder --------
+        self.enc1 = tf.keras.layers.Conv2D(
+            32, 3, strides=2, padding="same",
+            activation="relu", kernel_initializer="he_normal"
+        )
+        self.enc2 = tf.keras.layers.Conv2D(
+            64, 3, strides=2, padding="same",
+            activation="relu", kernel_initializer="he_normal"
+        )
+        self.enc3 = tf.keras.layers.Conv2D(
+            latent_channels, 3, strides=2, padding="same",
+            activation="relu", kernel_initializer="he_normal"
+        )
+
+        self.encoder = tf.keras.Sequential([
+            tf.keras.layers.Input(shape=(28, 28, 1)),
+            self.enc1,   # 28 → 14
+            self.enc2,   # 14 → 7
+            self.enc3,   # 7  → 4
+        ])
+
+        # -------- Decoder (tied) --------
+        self.decoder = tf.keras.Sequential([
+            Conv2DTransposeTied(self.enc3, activation="relu"),   # 4 → 7
+            Conv2DTransposeTied(self.enc2, activation="relu"),   # 7 → 14
+            Conv2DTransposeTied(self.enc1, activation="sigmoid") # 14 → 28
+        ])
+
+    def call(self, x):
+        # Accept (28, 28) or (28, 28, 1)
+        if x.shape.rank == 3:
+            x = tf.expand_dims(x, -1)
+
+        z = self.encoder(x)
+        y = self.decoder(z)
+
+        # Return (28, 28)
+        return tf.squeeze(y, axis=-1)
+
+
 class DenoiseConvolutionalAutoencoder(tf.keras.Model):
     def __init__(self, input_shape=(28, 28), latent_dim=30, **kwargs):
         super().__init__(**kwargs)
         self.encoder = tf.keras.Sequential([
             tf.keras.layers.Input(shape=input_shape),
+            tf.keras.layers.Flatten(),
+            tf.keras.layers.GaussianNoise(0.2),
             tf.keras.layers.Reshape((28, 28, 1)),
-            tf.keras.layers.Conv2D(16, (3, 3), activation='relu', padding='same', strides=2, kernel_initializer="he_normal"),
-            tf.keras.layers.Conv2D(8, (3, 3), activation='relu', padding='same', strides=2, kernel_initializer="he_normal")
+            tf.keras.layers.Conv2D(16, (5, 5), activation='relu', padding='same', strides=2, kernel_initializer="he_normal"), # output: 14 × 14 x 16
+            tf.keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same', strides=2, kernel_initializer="he_normal"), # output: 7 × 7 x 32
+            tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same', strides=2, kernel_initializer="he_normal"), # output: 3 × 3 x 64
+            tf.keras.layers.Conv2D(latent_dim, 3, activation="relu", padding="same", kernel_initializer="he_normal"),
+            tf.keras.layers.GlobalAvgPool2D()  # output: 30
         ])
 
         self.decoder = tf.keras.Sequential([
-            tf.keras.layers.Conv2DTranspose(8, kernel_size=3, strides=2, activation='relu', padding='same'),
-            tf.keras.layers.Conv2DTranspose(16, kernel_size=3, strides=2, activation='relu', padding='same'),
-            tf.keras.layers.Conv2D(1, kernel_size=(3, 3), activation='sigmoid', padding='same')
+            tf.keras.layers.Input(shape=[latent_dim]),
+            tf.keras.layers.Dense(3 * 3 * 16),
+            tf.keras.layers.Reshape((3, 3, 16)),
+            tf.keras.layers.Conv2DTranspose(32, kernel_size=3, strides=2, activation='relu', kernel_initializer="he_normal"),
+            tf.keras.layers.Conv2DTranspose(16, kernel_size=3, strides=2, activation='relu', padding='same', kernel_initializer="he_normal"),
+            tf.keras.layers.Conv2DTranspose(1, kernel_size=3, strides=2, activation='sigmoid', padding='same'),
+            tf.keras.layers.Reshape(input_shape)
         ])
 
     def call(self, x):
         encoded = self.encoder(x)
         decoded = self.decoder(encoded)
         return decoded
+
 
 def main():
     pass

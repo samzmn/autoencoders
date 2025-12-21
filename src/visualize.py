@@ -38,21 +38,33 @@ def plot_reconstructions(model, images, n_images=5):
 
 def visulaize_stacked_ae():
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model("./models/stacked_autoencoder.keras", custom_objects={"StackedAutoencoder": models.StackedAutoencoder})
+    model = keras.models.load_model("./saved_models/stacked_autoencoder.keras", custom_objects={"StackedAutoencoder": models.StackedAutoencoder})
     plot_reconstructions(model, X_test)
     save_fig("stacked_autoencoder_reconstruction_plot")
 
 def visualize_tied_stacked_ae():
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model("./models/tied_stacked_autoencoder.keras", custom_objects={"TiedStackedAutoencoder": models.TiedStackedAutoencoder})
+    model = keras.models.load_model("./saved_models/tied_stacked_autoencoder.keras", custom_objects={"TiedStackedAutoencoder": models.TiedStackedAutoencoder})
     plot_reconstructions(model, X_test)
     save_fig("tied_stacked_autoencoder_reconstruction_plot")
 
 def visulize_conv_ae():
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model("./models/convolutional_autoencoder.keras", custom_objects={"ConvolutionalAutoencoder": models.ConvolutionalAutoencoder})
+    model = keras.models.load_model("./saved_models/convolutional_autoencoder.keras", custom_objects={"ConvolutionalAutoencoder": models.ConvolutionalAutoencoder})
     plot_reconstructions(model, X_test)
     save_fig("convolutional_autoencoder_reconstruction_plot")
+
+def visulaize_tied_conv_ae():
+    (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
+    model = keras.models.load_model("./saved_models/tied_convolutional_autoencoder.keras", custom_objects={"tiedConvolutionalAutoencoder": models.TiedConvolutionalAutoencoder})
+    plot_reconstructions(model, X_test)
+    save_fig("tied_convolutional_autoencoder_reconstruction_plot")
+
+def visulaize_denoise_conv_ae():
+    (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
+    model = keras.models.load_model("./saved_models/denoise_convolutional_autoencoder.keras", custom_objects={"DenoiseConvolutionalAutoencoder": models.DenoiseConvolutionalAutoencoder})
+    plot_reconstructions(model, X_test)
+    save_fig("denoise_convolutional_autoencoder_reconstruction_plot")
 
 if __name__=="__main__":
     # visulaize_stacked_ae()

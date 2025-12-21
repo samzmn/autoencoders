@@ -60,6 +60,36 @@ def train_convolutional_autoencoder(X_train, X_valid, X_test, epochs=20, save_pl
         visualize.save_fig("convolutional_autoencoder_reconstruction_plot")
     return conv_ae
 
+def train_tied_convolutional_autoencoder(X_train, X_valid, X_test, epochs=20, save_plots=False):
+    tied_conv_ae = models.TiedConvolutionalAutoencoder()
+    tied_conv_ae.compile(optimizer=keras.optimizers.Nadam(), loss=keras.losses.Huber())
+    callbacks = get_default_callbacks(model_name="tied_conv_ae")
+
+    tied_conv_ae.fit(X_train, X_train, epochs=epochs,
+                    validation_data=(X_valid, X_valid),
+                    callbacks=callbacks)
+    tied_conv_ae.evaluate(X_test, X_test)
+    keras.models.save_model(tied_conv_ae, "./saved_models/tied_convolutional_autoencoder.keras")
+    if save_plots:
+        visualize.plot_reconstructions(tied_conv_ae, X_test)
+        visualize.save_fig("tied_convolutional_autoencoder_reconstruction_plot")
+    return tied_conv_ae
+
+def train_denoise_convolutional_autoencoder(X_train, X_valid, X_test, epochs=20, save_plots=False):
+    denoise_conv_ae = models.DenoiseConvolutionalAutoencoder()
+    denoise_conv_ae.compile(optimizer=keras.optimizers.Nadam(), loss=keras.losses.Huber())
+    callbacks = get_default_callbacks(model_name="denoise_conv_ae")
+
+    denoise_conv_ae.fit(X_train, X_train, epochs=epochs,
+                    validation_data=(X_valid, X_valid),
+                    callbacks=callbacks)
+    denoise_conv_ae.evaluate(X_test, X_test)
+    keras.models.save_model(denoise_conv_ae, "./saved_models/denoise_convolutional_autoencoder.keras")
+    if save_plots:
+        visualize.plot_reconstructions(denoise_conv_ae, X_test)
+        visualize.save_fig("denoise_convolutional_autoencoder_reconstruction_plot")
+    return denoise_conv_ae
+
 if __name__=="__main__":
     tf.random.set_seed(42)
     
