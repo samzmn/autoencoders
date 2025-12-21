@@ -17,10 +17,20 @@ class KLDivergenceRegularizer(tf.keras.regularizers.Regularizer):
 
     def __call__(self, inputs):
         mean_activities = tf.reduce_mean(inputs, axis=0)
-        return self.weight * (
-            tf.keras.losses.kullback_leibler_divergence(self.target, mean_activities) + 
-            tf.keras.losses.kullback_leibler_divergence(1. - self.taget, 1. - mean_activities)
+        # KL divergence between Bernoulli distributions
+        # return self.weight * (
+        #     tf.keras.losses.kullback_leibler_divergence(self.target, mean_activities) + 
+        #     tf.keras.losses.kullback_leibler_divergence(1. - self.taget, 1. - mean_activities)
+        # )
+        kl = (
+            self.target * tf.math.log(self.target / (mean_activities + 1e-8)) +
+            (1. - self.target) * tf.math.log((1. - self.target) / (1. - mean_activities + 1e-8))
         )
+        return self.weight * tf.reduce_sum(kl)
+
+    def get_config(self):
+        return {"weight": self.weight, "target": self.target}
+    
 
 class DenseTranspose(tf.keras.layers.Layer):
     def __init__(self, dense, activation=None, **kwargs):
@@ -63,7 +73,7 @@ class Conv2DTransposeTied(tf.keras.layers.Layer):
             raise ValueError("Encoder Conv2D layer must be built first.")
 
         # Encoder kernel: (kh, kw, Cin, Cout)
-        kh, kw, cin, cout = self.conv_layer.kernel.shape
+        kh, kw, cin, cout = self.conv_layer.kernel.shape # 3, 3, 1, 32
 
         # Decoder output channels = encoder input channels
         self.bias = self.add_weight(
@@ -78,15 +88,20 @@ class Conv2DTransposeTied(tf.keras.layers.Layer):
     def call(self, x):
         # Flip spatial dims + swap channels
         kernel = tf.reverse(self.conv_layer.kernel, axis=[0, 1])
-        kernel = tf.transpose(kernel, perm=[0, 1, 3, 2])
+        # kernel = tf.transpose(kernel, perm=[0, 1, 3, 2])
+        # kh, kw, cin, cout = self.conv_layer.kernel.shape
+        # transpose_kh, transpose_kw, t_out, t_cin = kernel.shape
+        # x has shape batch, H, W, C
+        # Conv2dTranspose has kernel of shape kh, kw, out_c, in_c  3, 3, 1, 32
+        # kernel = tf.transpose(kernel, perm=[0,1,cout,cin]) # (kh, kw, output_channels=cin, in_channels=cout)
 
         batch = tf.shape(x)[0]
         h = tf.shape(x)[1] * self.strides
         w = tf.shape(x)[2] * self.strides
-        out_ch = kernel.shape[-1]
+        out_ch = kernel.shape[-2]
 
         output_shape = tf.stack([batch, h, w, out_ch])
-
+        # print(output_shape)
         x = tf.nn.conv2d_transpose(
             x,
             kernel,
@@ -94,9 +109,9 @@ class Conv2DTransposeTied(tf.keras.layers.Layer):
             strides=[1, self.strides, self.strides, 1],
             padding=self.padding,
         )
-
+        
         x = tf.nn.bias_add(x, self.bias)
-
+        
         if self.activation is not None:
             x = self.activation(x)
 

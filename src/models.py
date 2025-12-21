@@ -98,7 +98,7 @@ class DenoiseStackedAutoencoder(tf.keras.Model):
         return self.decoder(z)
     
 class SparseStackedAutoencoder(tf.keras.Model):
-    def __init__(self, input_shape=(28, 28), latent_dim=30, sparsity_loss_weight=05e-3, sparsity_target=0.1, **kwargs):
+    def __init__(self, input_shape=(28, 28), latent_dim=30, sparsity_loss_weight=5e-3, sparsity_target=0.1, **kwargs):
         super().__init__(**kwargs)
         self.kld_regularizer = KLDivergenceRegularizer(weight=sparsity_loss_weight, target=sparsity_target)
         self.encoder = keras.Sequential([
@@ -124,11 +124,11 @@ class SparseStackedAutoencoder(tf.keras.Model):
 class RecurrentAutoencoder(tf.keras.Model):
     def __init__(self, input_shape=(28, 28), latent_dim=30, **kwargs):
         super().__init__(**kwargs)
-        self.encoder = keras.sequential([
+        self.encoder = keras.Sequential([
             keras.layers.LSTM(100, return_sequences=True),
             keras.layers.LSTM(latent_dim)
         ])
-        self.decoder = keras.sequential([
+        self.decoder = keras.Sequential([
             keras.layers.RepeatVector(28),
             keras.layers.LSTM(100, return_sequences=True),
             keras.layers.Dense(28)
@@ -145,7 +145,7 @@ class RecurrentAutoencoder(tf.keras.Model):
 class ConvolutionalAutoencoder(tf.keras.Model):
     def __init__(self, input_shape=(28, 28), latent_dim=30, **kwargs):
         super().__init__(**kwargs)
-        self.encoder = keras.sequential([
+        self.encoder = keras.Sequential([
             keras.layers.Input(shape=input_shape),
             keras.layers.Reshape([28, 28, 1]),
             keras.layers.Conv2D(16, 3, padding="same", activation="relu", kernel_initializer="he_normal"),
@@ -157,7 +157,7 @@ class ConvolutionalAutoencoder(tf.keras.Model):
             keras.layers.Conv2D(latent_dim, 3, padding="same", activation="relu", kernel_initializer="he_normal"),
             keras.layers.GlobalAvgPool2D()  # output: 30
         ])
-        self.decoder = keras.sequential([
+        self.decoder = keras.Sequential([
             keras.layers.Input(shape=(latent_dim,)),
             keras.layers.Dense(3 * 3 * 16),
             keras.layers.Reshape((3, 3, 16)),
@@ -173,53 +173,37 @@ class ConvolutionalAutoencoder(tf.keras.Model):
 
 
 class TiedConvolutionalAutoencoder(tf.keras.Model):
-    def __init__(self, latent_channels=16):
-        super().__init__()
+    def __init__(self, input_shape=(28, 28), latent_channels=10, **kwargs):
+        super().__init__(**kwargs)
+        self.conv1 = keras.layers.Conv2D(64, 5, strides=2, padding="same", activation="relu", kernel_initializer="he_normal")
+        self.conv2 = keras.layers.Conv2D(16, 3, strides=2, padding="same", activation="relu", kernel_initializer="he_normal")
+        self.conv3 = keras.layers.Conv2D(latent_channels, 3, strides=1, padding="same", activation="sigmoid",)
 
-        # -------- Encoder --------
-        self.enc1 = keras.layers.Conv2D(
-            32, 3, strides=2, padding="same",
-            activation="relu", kernel_initializer="he_normal"
-        )
-        self.enc2 = keras.layers.Conv2D(
-            64, 3, strides=2, padding="same",
-            activation="relu", kernel_initializer="he_normal"
-        )
-        self.enc3 = keras.layers.Conv2D(
-            latent_channels, 3, strides=2, padding="same",
-            activation="relu", kernel_initializer="he_normal"
-        )
-
-        self.encoder = keras.sequential([
-            keras.layers.Input(shape=(28, 28, 1)),
-            self.enc1,   # 28 → 14
-            self.enc2,   # 14 → 7
-            self.enc3,   # 7  → 4
+        self.encoder = keras.Sequential([
+            keras.layers.Input(shape=input_shape),
+            keras.layers.Reshape((28, 28, 1)),
+            self.conv1,   # 28 → 14
+            self.conv2,   # 14 → 7
+            self.conv3,
         ])
 
         # -------- Decoder (tied) --------
-        self.decoder = keras.sequential([
-            Conv2DTransposeTied(self.enc3, activation="relu"),   # 4 → 7
-            Conv2DTransposeTied(self.enc2, activation="relu"),   # 7 → 14
-            Conv2DTransposeTied(self.enc1, activation="sigmoid") # 14 → 28
+        self.decoder = keras.Sequential([
+            Conv2DTransposeTied(self.conv3, activation="relu", strides=1, padding="same"),
+            Conv2DTransposeTied(self.conv2, activation="relu", strides=2, padding="same"),   # 7 → 14
+            Conv2DTransposeTied(self.conv1, activation="relu", strides=2, padding="same"), # 14 → 28
+            keras.layers.Reshape(input_shape)
         ])
 
     def call(self, x):
-        # Accept (28, 28) or (28, 28, 1)
-        if x.shape.rank == 3:
-            x = tf.expand_dims(x, -1)
-
         z = self.encoder(x)
-        y = self.decoder(z)
-
-        # Return (28, 28)
-        return tf.squeeze(y, axis=-1)
+        return self.decoder(z)
 
 
 class DenoiseConvolutionalAutoencoder(tf.keras.Model):
     def __init__(self, input_shape=(28, 28), latent_dim=30, **kwargs):
         super().__init__(**kwargs)
-        self.encoder = keras.sequential([
+        self.encoder = keras.Sequential([
             keras.layers.Input(shape=input_shape),
             keras.layers.Flatten(),
             keras.layers.GaussianNoise(0.2),
@@ -231,7 +215,7 @@ class DenoiseConvolutionalAutoencoder(tf.keras.Model):
             keras.layers.GlobalAvgPool2D()  # output: 30
         ])
 
-        self.decoder = keras.sequential([
+        self.decoder = keras.Sequential([
             keras.layers.Input(shape=[latent_dim]),
             keras.layers.Dense(3 * 3 * 16),
             keras.layers.Reshape((3, 3, 16)),
@@ -247,19 +231,24 @@ class DenoiseConvolutionalAutoencoder(tf.keras.Model):
         return decoded
 
 class SparseConvolutionalAutoencoder(tf.keras.Model):
-    def __init__(self, input_shape=(28, 28), latent_dim=30, sparsity_loss_weight=05e-3, sparsity_target=0.1, **kwargs):
+    def __init__(self, input_shape=(28, 28), latent_channels=10, sparsity_loss_weight=5e-3, sparsity_target=0.1, **kwargs):
         super().__init__(**kwargs)
         self.kld_regularizer = KLDivergenceRegularizer(weight=sparsity_loss_weight, target=sparsity_target)
         self.encoder = keras.Sequential([
             keras.layers.Input(shape=input_shape),
-            keras.layers.Flatten(),
-            keras.layers.Dense(100, activation="relu", kernel_initializer="he_normal"),
-            keras.layers.Dense(latent_dim, activation="sigmoid")
+            keras.layers.Reshape((28, 28, 1)),
+            keras.layers.Conv2D(64, (5, 5), activation='relu', padding='same', strides=2, kernel_initializer="he_normal"), # output: 14 × 14 x 16
+            keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same', strides=2, kernel_initializer="he_normal"), # output: 7 × 7 x 32
+            keras.layers.Conv2D(16, (3, 3), activation='relu', padding='valid', strides=2, kernel_initializer="he_normal"), # output: 3 × 3 x 64
+            keras.layers.Conv2D(latent_channels, 3, activation="sigmoid", padding="same", activity_regularizer=self.kld_regularizer), # output: 3 × 3 x 10
         ])
+
         self.decoder = keras.Sequential([
-            keras.layers.Input(shape=(latent_dim,)),
-            keras.layers.Dense(100, activation="relu", kernel_initializer="he_normal"),
-            keras.layers.Dense(28 * 28, activation="sigmoid"),
+            # keras.layers.Input(shape=[3, 3, latent_channels]),
+            keras.layers.Conv2DTranspose(16, kernel_size=3, strides=2, activation='relu', padding='valid', kernel_initializer="he_normal"), # output: 7 × 7 x 16
+            keras.layers.Conv2DTranspose(32, kernel_size=3, strides=2, activation='relu', padding='same', kernel_initializer="he_normal"), # output: 14 × 14 x 32
+            keras.layers.Conv2DTranspose(64, kernel_size=3, strides=2, activation='relu', padding='same', kernel_initializer="he_normal"), # output: 28 × 28 x 64
+            keras.layers.Conv2DTranspose(1, kernel_size=3, strides=1, activation='sigmoid', padding='same'), # output: 28 × 28 x 1
             keras.layers.Reshape(input_shape)
         ])
 

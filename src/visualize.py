@@ -34,11 +34,11 @@ def plot_reconstructions(model, images, n_images=5):
         plt.imshow(reconstructions[image_index], cmap="binary")
         plt.axis("off")
 
-def visulaize_stacked_ae():
+def visulaize_stacked_ae(base_path="."):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model("./saved_models/stacked_autoencoder.keras", custom_objects={"StackedAutoencoder": models.StackedAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/stacked_autoencoder.keras", custom_objects={"StackedAutoencoder": models.StackedAutoencoder})
     plot_reconstructions(model, X_test)
-    save_fig("stacked_autoencoder_reconstruction_plot")
+    save_fig("stacked_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
 def visualize_tied_stacked_ae(base_path="."):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
@@ -50,26 +50,31 @@ def visualize_sparse_stacked_ae(base_path="."):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
     model = keras.models.load_model(f"{base_path}/saved_models/sparse_stacked_autoencoder.keras", custom_objects={"SparseStackedAutoencoder": models.SparseStackedAutoencoder})
     plot_reconstructions(model, X_test)
-    print(base_path)
     save_fig("sparse_stacked_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
-def visulize_conv_ae():
+def visulize_conv_ae(base_path="."):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model("./saved_models/convolutional_autoencoder.keras", custom_objects={"ConvolutionalAutoencoder": models.ConvolutionalAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/convolutional_autoencoder.keras", custom_objects={"ConvolutionalAutoencoder": models.ConvolutionalAutoencoder})
     plot_reconstructions(model, X_test)
-    save_fig("convolutional_autoencoder_reconstruction_plot")
+    save_fig("convolutional_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
-def visulaize_tied_conv_ae():
+def visulaize_tied_conv_ae(base_path="."):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model("./saved_models/tied_convolutional_autoencoder.keras", custom_objects={"tiedConvolutionalAutoencoder": models.TiedConvolutionalAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/tied_convolutional_autoencoder.keras", custom_objects={"TiedConvolutionalAutoencoder": models.TiedConvolutionalAutoencoder})
     plot_reconstructions(model, X_test)
-    save_fig("tied_convolutional_autoencoder_reconstruction_plot")
+    save_fig("tied_convolutional_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
-def visulaize_denoise_conv_ae():
+def visulaize_denoise_conv_ae(base_path="."):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model("./saved_models/denoise_convolutional_autoencoder.keras", custom_objects={"DenoiseConvolutionalAutoencoder": models.DenoiseConvolutionalAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/denoise_convolutional_autoencoder.keras", custom_objects={"DenoiseConvolutionalAutoencoder": models.DenoiseConvolutionalAutoencoder})
     plot_reconstructions(model, X_test)
-    save_fig("denoise_convolutional_autoencoder_reconstruction_plot")
+    save_fig("denoise_convolutional_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
+
+def visulaize_sparse_conv_ae(base_path="."):
+    (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
+    model = keras.models.load_model(f"{base_path}/saved_models/sparse_convolutional_autoencoder.keras", custom_objects={"SparseConvolutionalAutoencoder": models.SparseConvolutionalAutoencoder})
+    plot_reconstructions(model, X_test)
+    save_fig("sparse_convolutional_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
 if __name__=="__main__":
     # visulaize_stacked_ae()
