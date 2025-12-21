@@ -16,11 +16,9 @@ plt.rc('legend', fontsize=14)
 plt.rc('xtick', labelsize=10)
 plt.rc('ytick', labelsize=10)
 
-IMAGES_PATH = Path() / "images"
-IMAGES_PATH.mkdir(parents=True, exist_ok=True)
-
-def save_fig(fig_id, tight_layout=True, fig_extension="png", resolution=300):
-    path = IMAGES_PATH / f"{fig_id}.{fig_extension}"
+def save_fig(fig_id, base_path=Path() / "images", tight_layout=True, fig_extension="png", resolution=300):
+    base_path.mkdir(parents=True, exist_ok=True)
+    path = base_path / f"{fig_id}.{fig_extension}"
     if tight_layout:
         plt.tight_layout()
     plt.savefig(path, format=fig_extension, dpi=resolution)
@@ -42,17 +40,18 @@ def visulaize_stacked_ae():
     plot_reconstructions(model, X_test)
     save_fig("stacked_autoencoder_reconstruction_plot")
 
-def visualize_tied_stacked_ae():
+def visualize_tied_stacked_ae(base_path="."):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model("./saved_models/tied_stacked_autoencoder.keras", custom_objects={"TiedStackedAutoencoder": models.TiedStackedAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/tied_stacked_autoencoder.keras", custom_objects={"TiedStackedAutoencoder": models.TiedStackedAutoencoder})
     plot_reconstructions(model, X_test)
-    save_fig("tied_stacked_autoencoder_reconstruction_plot")
+    save_fig("tied_stacked_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
-def visualize_sparce_stacked_ae(base_path="."):
+def visualize_sparse_stacked_ae(base_path="."):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
     model = keras.models.load_model(f"{base_path}/saved_models/sparse_stacked_autoencoder.keras", custom_objects={"SparseStackedAutoencoder": models.SparseStackedAutoencoder})
     plot_reconstructions(model, X_test)
-    save_fig("tied_stacked_autoencoder_reconstruction_plot")
+    print(base_path)
+    save_fig("sparse_stacked_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
 def visulize_conv_ae():
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
