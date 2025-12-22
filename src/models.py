@@ -273,3 +273,43 @@ class DenoiseSparseConvolutionalAutoencoder(tf.keras.Model):
     def call(self, x):
         z = self.encoder(x)
         return self.decoder(z)
+
+class DenoiseSparseTiedConvolutionalAutoencoder(tf.keras.Model):
+    def __init__(self, input_shape=[32, 32, 3], latent_channels=10, 
+                 gaussian_noise=0.1, sparsity_loss_weight=5e-3, sparsity_target=0.1, **kwargs):
+        super().__init__(**kwargs)
+        self.kld_regularizer = KLDivergenceRegularizer(weight=sparsity_loss_weight, target=sparsity_target)
+        self.conv1 = keras.layers.Conv2D(16, 5, strides=1, padding="same", activation="relu", kernel_initializer="he_normal")
+        self.conv2 = keras.layers.Conv2D(16, 5, strides=2, padding="same", activation="relu", kernel_initializer="he_normal")
+        self.conv3 = keras.layers.Conv2D(32, 3, strides=1, padding="same", activation="relu", kernel_initializer="he_normal")
+        self.conv4 = keras.layers.Conv2D(32, 3, strides=2, padding="same", activation="relu", kernel_initializer="he_normal")
+        self.conv5 = keras.layers.Conv2D(64, 3, strides=1, padding="same", activation="relu", kernel_initializer="he_normal")
+        self.conv6 = keras.layers.Conv2D(64, 3, strides=2, padding="same", activation="relu", kernel_initializer="he_normal")
+        self.conv7 = keras.layers.Conv2D(latent_channels, 3, strides=1, padding="same", activation="sigmoid", activity_regularizer=self.kld_regularizer)
+
+        self.encoder = keras.Sequential([
+            keras.layers.Input(shape=input_shape),
+            keras.layers.GaussianNoise(gaussian_noise),
+            self.conv1, # output: 32 × 32 x 16
+            self.conv2, # output: 16 × 16 x 16
+            self.conv3, # output: 16 × 16 x 32
+            self.conv4, # output: 8 × 8 x 32
+            self.conv5, # output: 8 × 8 x 64
+            self.conv6, # output: 4 × 4 x 64
+            self.conv7, # output: 4 × 4 x 10
+        ])
+
+        self.decoder = keras.Sequential([
+            Conv2DTransposeTied(self.conv7, activation="relu", strides=1, padding="same"), # output: 4 × 4 x 64
+            Conv2DTransposeTied(self.conv6, activation="relu", strides=2, padding="same"), # output: 8 × 8 x 64
+            Conv2DTransposeTied(self.conv5, activation="relu", strides=1, padding="same"), # output: 8 × 8 x 32
+            Conv2DTransposeTied(self.conv4, activation="relu", strides=2, padding="same"), # output: 16 × 16 x 32
+            Conv2DTransposeTied(self.conv3, activation="relu", strides=1, padding="same"), # output: 16 × 16 x 16
+            Conv2DTransposeTied(self.conv2, activation="relu", strides=2, padding="same"), # output: 32 × 32 x 16
+            Conv2DTransposeTied(self.conv1, activation="relu", strides=1, padding="same"), # output: 32 × 32 x 3
+        ])
+
+    def call(self, x):
+        z = self.encoder(x)
+        return self.decoder(z)
+    

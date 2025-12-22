@@ -97,6 +97,18 @@ def train_denoise_saprse_convolutional_autoencoder(X_train, X_valid, X_test, epo
     denoise_sparse_conv_ae.evaluate(X_test, X_test)
     keras.models.save_model(denoise_sparse_conv_ae, f"{base_path}/saved_models/denoise_sparse_convolutional_autoencoder_{tag}.keras")
 
+def train_denoise_saprse_tied_convolutional_autoencoder(X_train, X_valid, X_test, epochs=20, base_path:str=".", tag: str=""):
+    denoise_sparse_tied_conv_ae = models.DenoiseSparseTiedConvolutionalAutoencoder(input_shape=(32, 32, 3), latent_channels=10,
+                                                                          gaussian_noise=0.2, sparsity_loss_weight=5e-3, sparsity_target=0.1)
+    denoise_sparse_tied_conv_ae.compile(optimizer=keras.optimizers.Nadam(), loss=keras.losses.Huber())
+    callbacks = get_default_callbacks(model_name="denoise_sparse_tied_conv_ae", tag=tag, ckpt_path=f"{base_path}/ckpt", tensorboard_path=f"{base_path}/runs", csv_log_dir=f"{base_path}/logs")
+
+    denoise_sparse_tied_conv_ae.fit(X_train, X_train, epochs=epochs,
+                    validation_data=(X_valid, X_valid),
+                    callbacks=callbacks)
+    denoise_sparse_tied_conv_ae.evaluate(X_test, X_test)
+    keras.models.save_model(denoise_sparse_tied_conv_ae, f"{base_path}/saved_models/denoise_sparse_tied_convolutional_autoencoder_{tag}.keras")
+
 if __name__=="__main__":
     tf.random.set_seed(42)
     
