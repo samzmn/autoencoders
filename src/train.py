@@ -109,14 +109,12 @@ def train_denoise_saprse_tied_convolutional_autoencoder(X_train, X_valid, X_test
     denoise_sparse_tied_conv_ae.evaluate(X_test, X_test)
     keras.models.save_model(denoise_sparse_tied_conv_ae, f"{base_path}/saved_models/denoise_sparse_tied_convolutional_autoencoder_{tag}.keras")
 
-def train_convolutional_variational_autoencoder(X_train, X_valid, X_test, epochs=20, base_path:str=".", tag: str=""):
-    convolutional_variational_ae = models.ConvolutionalVariationalAutoencoder(input_shape=(32, 32, 3), codings_size=10)
+def train_convolutional_variational_autoencoder(X_train, X_test, input_shape=(32, 32, 3), codings_size=10, epochs=20, base_path:str=".", tag: str=""):
+    convolutional_variational_ae = models.ConvolutionalVariationalAutoencoder(input_shape=input_shape, codings_size=codings_size)
     convolutional_variational_ae.compile(optimizer=keras.optimizers.Nadam(), loss=keras.losses.huber)
-    callbacks = get_default_callbacks(model_name="convolutional_variational_ae", tag=tag, ckpt_path=f"{base_path}/ckpt", tensorboard_path=f"{base_path}/runs", csv_log_dir=f"{base_path}/logs")
-
-    convolutional_variational_ae.fit(X_train, X_train, epochs=epochs,
-                    validation_data=(X_valid, X_valid),
-                    callbacks=callbacks)
+    callbacks = get_default_callbacks(model_name="convolutional_variational_ae", monitor="loss", tag=tag, 
+                                      ckpt_path=f"{base_path}/ckpt", tensorboard_path=f"{base_path}/runs", csv_log_dir=f"{base_path}/logs")
+    convolutional_variational_ae.fit(X_train, X_train, epochs=epochs, callbacks=callbacks)
     convolutional_variational_ae.evaluate(X_test, X_test)
     keras.models.save_model(convolutional_variational_ae, f"{base_path}/saved_models/convolutional_variational_autoencoder_{tag}.keras")
 

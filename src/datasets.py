@@ -7,7 +7,7 @@ import keras._tf_keras.keras as keras
 # Default cache path -> ~/.keras/datasets/
 # os.environ["KERAS_HOME"] = "/mnt/c/Users/samzm/keras_cache"
 
-def load_fashion_mnist() -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+def load_fashion_mnist(valid_set=True) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
     """
     This is a dataset of 60,000 28x28 grayscale images of 10 fashion categories, along with a test set of 10,000 images. This dataset can be used as a drop-in replacement for MNIST.
 
@@ -29,11 +29,14 @@ def load_fashion_mnist() -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarra
     X_test = X_test.astype(np.float32) / 255
     X_train_full = np.reshape(X_train_full, shape=[-1, 28, 28, 1])
     X_test = np.reshape(X_test, shape=[-1, 28, 28, 1])
-    X_train, X_valid = X_train_full[:-5000], X_train_full[-5000:]
-    y_train, y_valid = y_train_full[:-5000], y_train_full[-5000:]
-    return (X_train, y_train), (X_valid, y_valid), (X_test, y_test)
+    if valid_set:
+        X_train, X_valid = X_train_full[:-5000], X_train_full[-5000:]
+        y_train, y_valid = y_train_full[:-5000], y_train_full[-5000:]
+        return (X_train, y_train), (X_valid, y_valid), (X_test, y_test)
+    else:
+        return (X_train_full, y_train_full), (X_test, y_test)
 
-def load_cifar10() -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
+def load_cifar10(valid_set=True) -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:
     """
     This is a dataset of 50,000 32x32 color training images and 10,000 test images, labeled over 10 categories. See more info at the CIFAR homepage.
 
@@ -53,9 +56,12 @@ def load_cifar10() -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.
     (X_train_full, y_train_full), (X_test, y_test) = keras.datasets.cifar10.load_data()
     X_train_full = X_train_full.astype(np.float32) / 255
     X_test = X_test.astype(np.float32) / 255
-    X_train, X_valid = X_train_full[:-5000], X_train_full[-5000:]
-    y_train, y_valid = y_train_full[:-5000], y_train_full[-5000:]
-    return (X_train, y_train), (X_valid, y_valid), (X_test, y_test)
+    if valid_set:
+        X_train, X_valid = X_train_full[:-5000], X_train_full[-5000:]
+        y_train, y_valid = y_train_full[:-5000], y_train_full[-5000:]
+        return (X_train, y_train), (X_valid, y_valid), (X_test, y_test)
+    else:
+        return (X_train_full, y_train_full), (X_test, y_test)
 
 
 def load_cifar100() -> Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]:

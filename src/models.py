@@ -322,38 +322,44 @@ class ConvolutionalVariationalAutoencoder(keras.Model):
     def __init__(self, input_shape=[32, 32, 3], codings_size=10,
                  gaussian_noise=0.1, sparsity_loss_weight=5e-3, sparsity_target=0.1, **kwargs):
         super().__init__(**kwargs)
-        self.input_shape = input_shape
+        self._input_shape = input_shape
+        self.codings_size = codings_size
+        codings_recounstructed = input_shape[0] // 4
         self.kl_tracker = keras.metrics.Mean(name="kl_loss")
 
         encoder_input = keras.layers.Input(shape=input_shape)
         # keras.layers.GaussianNoise(gaussian_noise),
-        Z = keras.layers.Conv2D(16, (5, 5), padding='same', strides=1, kernel_initializer="he_normal")(encoder_input) # output: 32 × 32 x 64
+        Z = keras.layers.SeparableConv2D(16, (5, 5), strides=1, padding='same', depthwise_initializer="he_normal", pointwise_initializer="he_normal")(encoder_input) # output: 32 × 32 x 64
         Z = keras.layers.BatchNormalization()(Z)
         Z = keras.layers.Activation("elu")(Z)
-        Z = keras.layers.Conv2D(32, (3, 3), padding='same', strides=2, kernel_initializer="he_normal")(Z) # output: 16 × 16 x 32
+        Z = keras.layers.SeparableConv2D(32, (3, 3), strides=2, padding='same', depthwise_initializer="he_normal", pointwise_initializer="he_normal")(Z) # output: 16 × 16 x 32
         Z = keras.layers.BatchNormalization()(Z)
         Z = keras.layers.Activation("elu")(Z)
-        Z = keras.layers.Conv2D(64, (3, 3), padding='same', strides=2, kernel_initializer="he_normal")(Z) # output: 8 × 8 x 16
+        Z = keras.layers.SeparableConv2D(64, (3, 3), strides=2, padding='same', depthwise_initializer="he_normal", pointwise_initializer="he_normal")(Z) # output: 8 × 8 x 16
         Z = keras.layers.BatchNormalization()(Z)
         Z = keras.layers.Activation("elu")(Z)
-        Z = keras.layers.Conv2D(8, 3, activation="sigmoid", padding="same", strides=2)(Z) # output: 4 × 4 x 10
+        # Z = keras.layers.SeparableConv2D(16, (3, 3), strides=2, padding='same', depthwise_initializer="he_normal", pointwise_initializer="he_normal")(Z) # output: 4 × 4 x 16
+        # Z = keras.layers.BatchNormalization()(Z)
+        # Z = keras.layers.Activation("elu")(Z)
         Z = keras.layers.Flatten()(Z)
-        codings_mean = keras.layers.Dense(codings_size)(Z)  # μ
-        codings_log_var = keras.layers.Dense(codings_size)(Z)  # γ
+        Z = keras.layers.Dense(codings_size, activation="elu", kernel_initializer="he_normal")(Z)
+        codings_mean = keras.layers.Dense(codings_size, kernel_initializer="he_normal")(Z)  # μ
+        codings_log_var = keras.layers.Dense(codings_size, kernel_initializer="he_normal")(Z)  # γ
         codings = Sampling()([codings_mean, codings_log_var])
         self.encoder = keras.Model(inputs=[encoder_input], outputs=[codings_mean, codings_log_var, codings])
         
         self.decoder = keras.Sequential([
-            keras.layers.Dense(4 * 4 * codings_size),
-            keras.layers.Reshape([4, 4, codings_size]),
-            keras.layers.BatchNormalization(),
-            keras.layers.Conv2DTranspose(16, kernel_size=3, strides=2, padding='same', kernel_initializer="he_normal"), # output: 8 × 8 x 16
+            keras.layers.Dense(codings_recounstructed * codings_recounstructed * codings_size, kernel_initializer="he_normal"),
+            keras.layers.Reshape([codings_recounstructed, codings_recounstructed, codings_size]),
             keras.layers.BatchNormalization(),
             keras.layers.Activation("elu"),
-            keras.layers.Conv2DTranspose(32, kernel_size=3, strides=2, padding='same', kernel_initializer="he_normal"), # output: 16 × 16 x 32
+            # keras.layers.Conv2DTranspose(16, kernel_size=3, strides=2, padding="same", kernel_initializer="he_normal"), # output: 8 × 8 x 16
+            # keras.layers.BatchNormalization(),
+            # keras.layers.Activation("elu"),
+            keras.layers.Conv2DTranspose(32, kernel_size=3, strides=2, padding="same", kernel_initializer="he_normal"), # output: 16 × 16 x 32
             keras.layers.BatchNormalization(),
             keras.layers.Activation("elu"),
-            keras.layers.Conv2DTranspose(64, kernel_size=3, strides=2, padding='same', kernel_initializer="he_normal"), # output: 32 × 32 x 64
+            keras.layers.Conv2DTranspose(64, kernel_size=3, strides=2, padding="same", kernel_initializer="he_normal"), # output: 32 × 32 x 64
             keras.layers.BatchNormalization(),
             keras.layers.Activation("elu"),
             keras.layers.Conv2DTranspose(3, kernel_size=3, strides=1, activation='sigmoid', padding='same'), # output: 32 × 32 x 3
@@ -367,9 +373,18 @@ class ConvolutionalVariationalAutoencoder(keras.Model):
         latent_loss = -0.5 * tf.reduce_sum(
             1 + codings_log_var - tf.exp(codings_log_var) - tf.square(codings_mean), axis=-1
         )
-        W, H, C = self.input_shape
+        W, H, C = self._input_shape
         kl_loss = tf.reduce_mean(latent_loss) / float(W * H * C)
         self.add_loss(kl_loss)
         self.kl_tracker.update_state(kl_loss)
 
         return reconstruction
+    
+    def get_config(self):
+        config = super().get_config()
+        config.update({"input_shape": self._input_shape, "codings_size": self.codings_size})
+        return config
+    
+    @classmethod 
+    def from_config(cls, config): 
+        return cls(**config)

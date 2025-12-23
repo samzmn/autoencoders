@@ -64,66 +64,109 @@ def plot_rgb_reconstructions(model, images, n_images=5, noise=0.1):
         if index == 0:
             plt.title("Predicted")
 
+def plot_multiple_images(images, n_cols=None):
+    n_cols = n_cols or len(images)
+    n_rows = (len(images) - 1) // n_cols + 1
+    if images.shape[-1] == 1:
+        images = images.squeeze(axis=-1)
+    plt.figure(figsize=(n_cols, n_rows))
+    for index, image in enumerate(images):
+        plt.subplot(n_rows, n_cols, index + 1)
+        plt.imshow(image, cmap="binary")
+        plt.axis("off")
 
-def visulaize_stacked_ae(base_path=".", tag="fashion"):
+def generate_new_imgs(model, codings_size, n_images=21):
+    codings = tf.random.normal(shape=[n_images, codings_size])
+    images = model.decoder(codings).numpy()
+    plot_multiple_images(images, 7)
+
+def semantic_interpolation(model, codings_size,):
+    codings = np.zeros([7, codings_size])
+    codings[:, 3] = np.linspace(-0.8, 0.8, 7)  # axis 3 looks best in this case
+    images = model.decoder(codings).numpy()
+    plot_multiple_images(images)
+
+def visualize_stacked_ae(base_path=".", tag="fashion"):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model(f"{base_path}/saved_models/stacked_autoencoder_{tag}.keras", custom_objects={"StackedAutoencoder": models.StackedAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/stacked_autoencoder_{tag}.keras", 
+                                    custom_objects={"StackedAutoencoder": models.StackedAutoencoder})
     plot_reconstructions(model, X_test)
     save_fig("stacked_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
 def visualize_tied_stacked_ae(base_path=".", tag="fashion"):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model(f"{base_path}/saved_models/tied_stacked_autoencoder_{tag}.keras", custom_objects={"TiedStackedAutoencoder": models.TiedStackedAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/tied_stacked_autoencoder_{tag}.keras", 
+                                    custom_objects={"TiedStackedAutoencoder": models.TiedStackedAutoencoder})
     plot_reconstructions(model, X_test)
     save_fig("tied_stacked_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
 def visualize_sparse_stacked_ae(base_path=".", tag="fashion"):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model(f"{base_path}/saved_models/sparse_stacked_autoencoder_{tag}.keras", custom_objects={"SparseStackedAutoencoder": models.SparseStackedAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/sparse_stacked_autoencoder_{tag}.keras", 
+                                    custom_objects={"SparseStackedAutoencoder": models.SparseStackedAutoencoder})
     plot_reconstructions(model, X_test)
     save_fig("sparse_stacked_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
 def visulize_conv_ae(base_path=".", tag="fashion"):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model(f"{base_path}/saved_models/convolutional_autoencoder_{tag}.keras", custom_objects={"ConvolutionalAutoencoder": models.ConvolutionalAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/convolutional_autoencoder_{tag}.keras", 
+                                    custom_objects={"ConvolutionalAutoencoder": models.ConvolutionalAutoencoder})
     plot_reconstructions(model, X_test)
     save_fig("convolutional_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
-def visulaize_tied_conv_ae(base_path=".", tag="fashion"):
+def visualize_tied_conv_ae(base_path=".", tag="fashion"):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model(f"{base_path}/saved_models/tied_convolutional_autoencoder_{tag}.keras", custom_objects={"TiedConvolutionalAutoencoder": models.TiedConvolutionalAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/tied_convolutional_autoencoder_{tag}.keras", 
+                                    custom_objects={"TiedConvolutionalAutoencoder": models.TiedConvolutionalAutoencoder})
     plot_reconstructions(model, X_test)
     save_fig("tied_convolutional_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
-def visulaize_denoise_conv_ae(base_path=".", tag="fashion"):
+def visualize_denoise_conv_ae(base_path=".", tag="fashion"):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model(f"{base_path}/saved_models/denoise_convolutional_autoencoder_{tag}.keras", custom_objects={"DenoiseConvolutionalAutoencoder": models.DenoiseConvolutionalAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/denoise_convolutional_autoencoder_{tag}.keras", 
+                                    custom_objects={"DenoiseConvolutionalAutoencoder": models.DenoiseConvolutionalAutoencoder})
     plot_reconstructions(model, X_test)
     save_fig("denoise_convolutional_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
-def visulaize_sparse_conv_ae(base_path=".", tag="fashion"):
+def visualize_sparse_conv_ae(base_path=".", tag="fashion"):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
-    model = keras.models.load_model(f"{base_path}/saved_models/sparse_convolutional_autoencoder_{tag}.keras", custom_objects={"SparseConvolutionalAutoencoder": models.SparseConvolutionalAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/sparse_convolutional_autoencoder_{tag}.keras", 
+                                    custom_objects={"SparseConvolutionalAutoencoder": models.SparseConvolutionalAutoencoder})
     plot_reconstructions(model, X_test)
     save_fig("sparse_convolutional_autoencoder_reconstruction_plot", base_path=Path(base_path) / "images")
 
-def visulaize_denoise_sparse_conv_ae(base_path=".", tag=""):
+def visualize_denoise_sparse_conv_ae(base_path=".", tag=""):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_cifar10()
-    model = keras.models.load_model(f"{base_path}/saved_models/denoise_sparse_convolutional_autoencoder_{tag}.keras", custom_objects={"DenoiseSparseConvolutionalAutoencoder": models.DenoiseSparseConvolutionalAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/denoise_sparse_convolutional_autoencoder_{tag}.keras", 
+                                    custom_objects={"DenoiseSparseConvolutionalAutoencoder": models.DenoiseSparseConvolutionalAutoencoder})
     plot_rgb_reconstructions(model, X_test, noise=0.2)
     save_fig(f"denoise_sparse_convolutional_autoencoder_{tag}_reconstruction_plot", base_path=Path(base_path) / "images")
 
-def visulaize_denoise_sparse_tied_conv_ae(base_path=".", tag=""):
+def visualize_denoise_sparse_tied_conv_ae(base_path=".", tag=""):
     (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_cifar10()
-    model = keras.models.load_model(f"{base_path}/saved_models/denoise_sparse_tied_convolutional_autoencoder_{tag}.keras", custom_objects={"DenoiseSparseTiedConvolutionalAutoencoder": models.DenoiseSparseTiedConvolutionalAutoencoder})
+    model = keras.models.load_model(f"{base_path}/saved_models/denoise_sparse_tied_convolutional_autoencoder_{tag}.keras", 
+                                    custom_objects={"DenoiseSparseTiedConvolutionalAutoencoder": models.DenoiseSparseTiedConvolutionalAutoencoder})
     plot_rgb_reconstructions(model, X_test, noise=0.2)
     save_fig(f"denoise_sparse_tied_convolutional_autoencoder_{tag}_reconstruction_plot", base_path=Path(base_path) / "images")
 
-def visulaize_conv_var_ae(base_path=".", tag=""):
-    (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_cifar10()
-    model = keras.models.load_model(f"{base_path}/saved_models/convolutional_variational_autoencoder_{tag}.keras", custom_objects={"ConvolutionalVariationalAutoencoder": models.ConvolutionalVariationalAutoencoder})
+def visualize_conv_var_ae(base_path=".", tag=""):
+    if tag=="fashion":
+        (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_fashion_mnist()
+    else: # "cifar"
+        (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_cifar10()
+    model = keras.models.load_model(f"{base_path}/saved_models/convolutional_variational_autoencoder_{tag}.keras", 
+                                    custom_objects={"ConvolutionalVariationalAutoencoder": models.ConvolutionalVariationalAutoencoder})
     plot_reconstructions(model, X_test)
     save_fig(f"convolutional_variational_autoencoder_{tag}_reconstruction_plot", base_path=Path(base_path) / "images")
+
+def visualize_new_generated_conv_var_ae(base_path=".", tag=""):
+    model = keras.models.load_model(f"{base_path}/saved_models/convolutional_variational_autoencoder_{tag}.keras", 
+                                    custom_objects={"ConvolutionalVariationalAutoencoder": models.ConvolutionalVariationalAutoencoder})
+    generate_new_imgs(model, codings_size=10)
+    save_fig(f"convolutional_variational_autoencoder_{tag}_generated", tight_layout=False, base_path=Path(base_path) / "images")
+    semantic_interpolation(model, codings_size=10)
+    save_fig(f"convolutional_variational_autoencoder_{tag}_semantic_interpolation", tight_layout=False, base_path=Path(base_path) / "images")
+
 
 if __name__=="__main__":
     pass
