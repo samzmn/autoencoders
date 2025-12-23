@@ -319,8 +319,7 @@ class DenoiseSparseTiedConvolutionalAutoencoder(tf.keras.Model):
 #--------------------------------------------------------------------------------
 
 class ConvolutionalVariationalAutoencoder(keras.Model):
-    def __init__(self, input_shape=[32, 32, 3], codings_size=10,
-                 gaussian_noise=0.1, sparsity_loss_weight=5e-3, sparsity_target=0.1, **kwargs):
+    def __init__(self, input_shape=[32, 32, 3], codings_size=10, **kwargs):
         super().__init__(**kwargs)
         self._input_shape = input_shape
         self.codings_size = codings_size
@@ -338,9 +337,6 @@ class ConvolutionalVariationalAutoencoder(keras.Model):
         Z = keras.layers.SeparableConv2D(64, (3, 3), strides=2, padding='same', depthwise_initializer="he_normal", pointwise_initializer="he_normal")(Z) # output: 8 × 8 x 16
         Z = keras.layers.BatchNormalization()(Z)
         Z = keras.layers.Activation("elu")(Z)
-        # Z = keras.layers.SeparableConv2D(16, (3, 3), strides=2, padding='same', depthwise_initializer="he_normal", pointwise_initializer="he_normal")(Z) # output: 4 × 4 x 16
-        # Z = keras.layers.BatchNormalization()(Z)
-        # Z = keras.layers.Activation("elu")(Z)
         Z = keras.layers.Flatten()(Z)
         Z = keras.layers.Dense(codings_size, activation="elu", kernel_initializer="he_normal")(Z)
         codings_mean = keras.layers.Dense(codings_size, kernel_initializer="he_normal")(Z)  # μ
@@ -353,9 +349,6 @@ class ConvolutionalVariationalAutoencoder(keras.Model):
             keras.layers.Reshape([codings_recounstructed, codings_recounstructed, codings_size]),
             keras.layers.BatchNormalization(),
             keras.layers.Activation("elu"),
-            # keras.layers.Conv2DTranspose(16, kernel_size=3, strides=2, padding="same", kernel_initializer="he_normal"), # output: 8 × 8 x 16
-            # keras.layers.BatchNormalization(),
-            # keras.layers.Activation("elu"),
             keras.layers.Conv2DTranspose(32, kernel_size=3, strides=2, padding="same", kernel_initializer="he_normal"), # output: 16 × 16 x 32
             keras.layers.BatchNormalization(),
             keras.layers.Activation("elu"),
