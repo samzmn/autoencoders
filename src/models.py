@@ -1,7 +1,8 @@
 import tensorflow as tf
 import keras._tf_keras.keras as keras
 
-from utils import DenseTranspose, Conv2DTransposeTied, KLDivergenceRegularizer
+from utils import DenseTranspose, Conv2DTransposeTied, KLDivergenceRegularizer, Sampling
+
 #--------------------------------------------------------------------------------
 # --------------- Stacked Autoencoders -----------------------------------------
 #--------------------------------------------------------------------------------
@@ -313,3 +314,62 @@ class DenoiseSparseTiedConvolutionalAutoencoder(tf.keras.Model):
         z = self.encoder(x)
         return self.decoder(z)
     
+#--------------------------------------------------------------------------------
+# --------------- Variational Autoencoders -----------------------------------
+#--------------------------------------------------------------------------------
+
+class ConvolutionalVariationalAutoencoder(keras.Model):
+    def __init__(self, input_shape=[32, 32, 3], codings_size=10,
+                 gaussian_noise=0.1, sparsity_loss_weight=5e-3, sparsity_target=0.1, **kwargs):
+        super().__init__(**kwargs)
+        self.input_shape = input_shape
+        self.kl_tracker = keras.metrics.Mean(name="kl_loss")
+
+        encoder_input = keras.layers.Input(shape=input_shape)
+        # keras.layers.GaussianNoise(gaussian_noise),
+        Z = keras.layers.Conv2D(16, (5, 5), padding='same', strides=1, kernel_initializer="he_normal")(encoder_input) # output: 32 × 32 x 64
+        Z = keras.layers.BatchNormalization()(Z)
+        Z = keras.layers.Activation("elu")(Z)
+        Z = keras.layers.Conv2D(32, (3, 3), padding='same', strides=2, kernel_initializer="he_normal")(Z) # output: 16 × 16 x 32
+        Z = keras.layers.BatchNormalization()(Z)
+        Z = keras.layers.Activation("elu")(Z)
+        Z = keras.layers.Conv2D(64, (3, 3), padding='same', strides=2, kernel_initializer="he_normal")(Z) # output: 8 × 8 x 16
+        Z = keras.layers.BatchNormalization()(Z)
+        Z = keras.layers.Activation("elu")(Z)
+        Z = keras.layers.Conv2D(8, 3, activation="sigmoid", padding="same", strides=2)(Z) # output: 4 × 4 x 10
+        Z = keras.layers.Flatten()(Z)
+        codings_mean = keras.layers.Dense(codings_size)(Z)  # μ
+        codings_log_var = keras.layers.Dense(codings_size)(Z)  # γ
+        codings = Sampling()([codings_mean, codings_log_var])
+        self.encoder = keras.Model(inputs=[encoder_input], outputs=[codings_mean, codings_log_var, codings])
+        
+        self.decoder = keras.Sequential([
+            keras.layers.Dense(4 * 4 * codings_size),
+            keras.layers.Reshape([4, 4, codings_size]),
+            keras.layers.BatchNormalization(),
+            keras.layers.Conv2DTranspose(16, kernel_size=3, strides=2, padding='same', kernel_initializer="he_normal"), # output: 8 × 8 x 16
+            keras.layers.BatchNormalization(),
+            keras.layers.Activation("elu"),
+            keras.layers.Conv2DTranspose(32, kernel_size=3, strides=2, padding='same', kernel_initializer="he_normal"), # output: 16 × 16 x 32
+            keras.layers.BatchNormalization(),
+            keras.layers.Activation("elu"),
+            keras.layers.Conv2DTranspose(64, kernel_size=3, strides=2, padding='same', kernel_initializer="he_normal"), # output: 32 × 32 x 64
+            keras.layers.BatchNormalization(),
+            keras.layers.Activation("elu"),
+            keras.layers.Conv2DTranspose(3, kernel_size=3, strides=1, activation='sigmoid', padding='same'), # output: 32 × 32 x 3
+        ])
+
+    def call(self, x, training=False):
+        codings_mean, codings_log_var, codings = self.encoder([x], training=training)
+        reconstruction = self.decoder(codings, training=training)
+    
+        # ----------------------------- # KL divergence # ----------------------------- 
+        latent_loss = -0.5 * tf.reduce_sum(
+            1 + codings_log_var - tf.exp(codings_log_var) - tf.square(codings_mean), axis=-1
+        )
+        W, H, C = self.input_shape
+        kl_loss = tf.reduce_mean(latent_loss) / float(W * H * C)
+        self.add_loss(kl_loss)
+        self.kl_tracker.update_state(kl_loss)
+
+        return reconstruction

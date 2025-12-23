@@ -32,6 +32,12 @@ class KLDivergenceRegularizer(tf.keras.regularizers.Regularizer):
         return {"weight": self.weight, "target": self.target}
     
 
+class Sampling(tf.keras.layers.Layer):
+    def call(self, inputs):
+        mean, log_var = inputs
+        return tf.random.normal(tf.shape(log_var)) * tf.exp(log_var / 2) + mean 
+    
+
 class DenseTranspose(tf.keras.layers.Layer):
     def __init__(self, dense, activation=None, **kwargs):
         super().__init__(**kwargs)

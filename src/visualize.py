@@ -119,5 +119,11 @@ def visulaize_denoise_sparse_tied_conv_ae(base_path=".", tag=""):
     plot_rgb_reconstructions(model, X_test, noise=0.2)
     save_fig(f"denoise_sparse_tied_convolutional_autoencoder_{tag}_reconstruction_plot", base_path=Path(base_path) / "images")
 
+def visulaize_conv_var_ae(base_path=".", tag=""):
+    (X_train, y_train), (X_valid, y_valid), (X_test, y_test) = load_cifar10()
+    model = keras.models.load_model(f"{base_path}/saved_models/convolutional_variational_autoencoder_{tag}.keras", custom_objects={"ConvolutionalVariationalAutoencoder": models.ConvolutionalVariationalAutoencoder})
+    plot_reconstructions(model, X_test)
+    save_fig(f"convolutional_variational_autoencoder_{tag}_reconstruction_plot", base_path=Path(base_path) / "images")
+
 if __name__=="__main__":
     pass
